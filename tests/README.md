@@ -11,7 +11,8 @@ Authentication, RBAC, and asset CRUD edge-case verification.
 | `frontend/src/utils/apiError.js` | Maps API rejections to titled UI error banners |
 | `tests/phase1-auth.test.js` | Phase 1 — auth & RBAC integration tests |
 | `tests/phase2-assets.test.js` | Phase 2 — vehicle/driver CRUD edge-case tests |
-| `postman/TransitOps-Phase1-Auth.postman_collection.json` | Postman collection with test scripts |
+| `tests/phase3-trips.test.js` | Phase 3 — trip lifecycle state machine tests |
+| `tests/phase4-full-system.test.js` | Phase 4 — full PDF workflow E2E (trip → maintenance → analytics) |
 | `postman/TransitOps-Local.postman_environment.json` | Local environment variables |
 
 ## Axios client behavior
@@ -50,6 +51,8 @@ npm run dev
 ```cmd
 node tests/phase1-auth.test.js
 node tests/phase2-assets.test.js
+node tests/phase3-trips.test.js
+node tests/phase4-full-system.test.js
 ```
 
 Expected output:
@@ -82,6 +85,24 @@ Results: 14 passed, 0 failed, 14 total
 
 The suite creates uniquely-named QA records (run-ID suffix) and deletes
 them at the end, so it can be re-run safely.
+
+## Phase 4 full-system workflow (`phase4-full-system.test.js`)
+
+| Step | Expected |
+|------|----------|
+| Register 500 kg vehicle | `201`, status `Available` |
+| Register driver with valid license | `201` |
+| Create + dispatch trip (450 kg cargo) | Vehicle/driver → `On Trip` |
+| Dispatch pool while On Trip | Vehicle absent from `/vehicles?status=Available` |
+| Complete trip | Vehicle/driver → `Available` |
+| Log maintenance (Oil Change) | Vehicle → `In Shop` via DB trigger |
+| Dispatch pool while In Shop | Vehicle absent from Available pool |
+| Fuel log + analytics | `/analytics/dashboard` + operational cost report `200` |
+| Cleanup | Close maintenance; delete accepts `200` or `409` (FK-linked) |
+
+```cmd
+node tests/phase4-full-system.test.js
+```
 
 ## Postman setup
 

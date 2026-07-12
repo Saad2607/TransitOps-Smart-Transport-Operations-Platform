@@ -156,7 +156,7 @@ async function main() {
         actualDistanceKm: 125,
         finalOdometerKm: 5025,
         fuelConsumedLiters: 18,
-        revenue: 2500,
+        revenue: 207500,
       },
     });
 

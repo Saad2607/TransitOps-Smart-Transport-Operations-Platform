@@ -159,9 +159,9 @@ async function main() {
     assertStatus(status, 403, 'driver vehicles status');
   });
 
-  await runTest('POST /fleet/trips allows Driver with 201', async () => {
+  await runTest('POST /fleet/trips validates required fields for Driver (400)', async () => {
     const { status } = await api('POST', '/fleet/trips', { token: driverToken, body: {} });
-    assertStatus(status, 201, 'driver create trip status');
+    assertStatus(status, 400, 'driver create trip without payload');
   });
 
   await runTest('GET /fleet/reports/operational-cost blocks Driver with 403', async () => {

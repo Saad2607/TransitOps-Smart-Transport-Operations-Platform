@@ -105,7 +105,7 @@ function vehiclePayload(overrides = {}) {
     vehicleType: 'Van',
     maxLoadCapacityKg: 800,
     odometerKm: 1000,
-    acquisitionCost: 25000,
+    acquisitionCost: 2075000,
     status: 'Available',
     region: 'QA',
     ...overrides,
