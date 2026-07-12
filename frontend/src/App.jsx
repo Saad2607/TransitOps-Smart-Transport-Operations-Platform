@@ -12,6 +12,7 @@ import Compliance from './pages/Compliance';
 import Reports from './pages/Reports';
 import Expenses from './pages/Expenses';
 import FuelLogs from './pages/FuelLogs';
+import Maintenance from './pages/Maintenance';
 import Unauthorized from './pages/Unauthorized';
 
 export default function App() {
@@ -85,6 +86,15 @@ export default function App() {
                 allowedRoles={[ROLES.FLEET_MANAGER, ROLES.FINANCIAL_ANALYST, ROLES.DRIVER]}
               >
                 <FuelLogs />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/maintenance"
+            element={
+              <RoleRoute allowedRoles={[ROLES.FLEET_MANAGER]}>
+                <Maintenance />
               </RoleRoute>
             }
           />

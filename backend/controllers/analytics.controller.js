@@ -33,9 +33,30 @@ async function dashboardKpis(req, res) {
   res.status(200).json({ success: true, data });
 }
 
+async function operationsSummary(req, res) {
+  const data = await analyticsService.getOperationsSummary({
+    status: req.query.status,
+    vehicleType: req.query.vehicleType,
+    region: req.query.region,
+  });
+
+  res.status(200).json({ success: true, data });
+}
+
+async function fuelEfficiency(req, res) {
+  const data = await analyticsService.getFuelEfficiency({
+    from: req.query.from,
+    to: req.query.to,
+  });
+
+  res.status(200).json({ success: true, data });
+}
+
 module.exports = {
   fleetUtilization,
   fleetUtilizationCurrent,
   vehicleRoi,
   dashboardKpis,
+  operationsSummary,
+  fuelEfficiency,
 };

@@ -12,7 +12,8 @@
     "dev": "nodemon server.js",
     "test:auth": "node ../tests/phase1-auth.test.js",
     "test:assets": "node ../tests/phase2-assets.test.js",
-    "test:trips": "node ../tests/phase3-trips.test.js"
+    "test:trips": "node ../tests/phase3-trips.test.js",
+    "test:full-system": "node ../tests/phase4-full-system.test.js"
   },
   "keywords": [
     "transitops",

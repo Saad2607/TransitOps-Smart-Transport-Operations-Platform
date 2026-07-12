@@ -4,7 +4,9 @@ import { tripApi } from '../services/api';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
 import TripDispatchForm from '../components/trips/TripDispatchForm';
+import TripCompleteModal from '../components/trips/TripCompleteModal';
 import { filterTrips } from '../utils/tripUtils';
+import { describeApiError } from '../utils/apiError';
 
 export default function Trips() {
   const [trips, setTrips] = useState([]);
@@ -12,6 +14,9 @@ export default function Trips() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [completeTrip, setCompleteTrip] = useState(null);
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
 
   const loadTrips = useCallback(async () => {
@@ -54,22 +59,32 @@ export default function Trips() {
   async function handleDispatch(trip) {
     try {
       await tripApi.dispatch(trip.id);
-      setActionMessage(`Trip #${trip.id} dispatched.`);
+      setActionMessage(`Trip #${trip.id} dispatched. Vehicle and driver are now On Trip.`);
       await loadTrips();
     } catch (err) {
       setActionMessage(err.message || 'Dispatch failed.');
     }
   }
 
-  async function handleComplete(trip) {
+  async function handleCompleteSubmit(payload) {
+    if (!completeTrip) return;
+
+    setCompleting(true);
+    setCompleteError('');
+
     try {
-      await tripApi.complete(trip.id, {
-        actualDistanceKm: trip.plannedDistanceKm,
-      });
-      setActionMessage(`Trip #${trip.id} completed.`);
+      await tripApi.complete(completeTrip.id, payload);
+      setActionMessage(
+        `Trip #${completeTrip.id} completed. Vehicle and driver restored to Available.`
+      );
+      setCompleteTrip(null);
       await loadTrips();
     } catch (err) {
-      setActionMessage(err.message || 'Complete failed.');
+      setCompleteError(
+        describeApiError(err, { fallbackMessage: 'Failed to complete trip.' })
+      );
+    } finally {
+      setCompleting(false);
     }
   }
 
@@ -215,7 +230,10 @@ export default function Trips() {
                         {trip.status === 'Dispatched' && (
                           <button
                             type="button"
-                            onClick={() => handleComplete(trip)}
+                            onClick={() => {
+                              setCompleteError('');
+                              setCompleteTrip(trip);
+                            }}
                             className="rounded-lg border border-emerald-200 p-2 text-emerald-700 hover:bg-emerald-50"
                             aria-label={`Complete trip ${trip.id}`}
                           >
@@ -245,6 +263,15 @@ export default function Trips() {
       <Modal open={modalOpen} title="Trip Dispatch Booking" onClose={() => setModalOpen(false)}>
         <TripDispatchForm onSuccess={handleBookSuccess} onCancel={() => setModalOpen(false)} />
       </Modal>
+
+      <TripCompleteModal
+        open={Boolean(completeTrip)}
+        trip={completeTrip}
+        onClose={() => setCompleteTrip(null)}
+        onSubmit={handleCompleteSubmit}
+        saving={completing}
+        error={completeError}
+      />
     </div>
   );
 }

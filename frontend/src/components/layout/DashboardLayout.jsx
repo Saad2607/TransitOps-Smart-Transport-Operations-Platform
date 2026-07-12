@@ -12,6 +12,7 @@ import {
   Truck,
   Users,
   Wallet,
+  Wrench,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -44,6 +45,12 @@ const navItems = [
     to: '/trips',
     icon: Route,
     roles: [ROLES.FLEET_MANAGER, ROLES.DRIVER],
+  },
+  {
+    label: 'Maintenance',
+    to: '/maintenance',
+    icon: Wrench,
+    roles: [ROLES.FLEET_MANAGER],
   },
   {
     label: 'Compliance',

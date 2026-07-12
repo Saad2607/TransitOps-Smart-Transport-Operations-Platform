@@ -91,10 +91,11 @@ async function getVehicleRoi({ from, to } = {}) {
 }
 
 async function getDashboardKpis({ from, to } = {}) {
-  const [utilization, vehicles, current] = await Promise.all([
+  const [utilization, vehicles, current, fuelEfficiency] = await Promise.all([
     getFleetUtilization({ from, to }),
     getVehicleRoi({ from, to }),
     getFleetUtilizationCurrent(),
+    getFuelEfficiency({ from, to }),
   ]);
 
   const roiValues = vehicles.filter((v) => v.roiPercent != null);
@@ -109,6 +110,7 @@ async function getDashboardKpis({ from, to } = {}) {
     fleetUtilization: utilization,
     fleetUtilizationCurrent: current,
     vehicleRoi: vehicles,
+    fuelEfficiency,
     summary: {
       vehiclesTracked: vehicles.length,
       avgRoiPercent,
@@ -121,9 +123,156 @@ async function getDashboardKpis({ from, to } = {}) {
   };
 }
 
+async function getOperationsSummary({ status, vehicleType, region } = {}) {
+  const conditions = [`v.status <> 'Retired'`];
+  const params = [];
+
+  if (status) {
+    params.push(status);
+    conditions.push(`v.status = $${params.length}`);
+  }
+
+  if (vehicleType) {
+    params.push(vehicleType);
+    conditions.push(`v.vehicle_type = $${params.length}`);
+  }
+
+  if (region) {
+    params.push(region);
+    conditions.push(`v.region = $${params.length}`);
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const { rows: vehicleRows } = await query(
+    `SELECT
+       COUNT(*)::INT AS total_fleet,
+       COUNT(*) FILTER (WHERE v.status = 'On Trip')::INT AS active_vehicles,
+       COUNT(*) FILTER (WHERE v.status = 'Available')::INT AS available_vehicles,
+       COUNT(*) FILTER (WHERE v.status = 'In Shop')::INT AS vehicles_in_maintenance
+     FROM vehicles v
+     ${whereClause}`,
+    params
+  );
+
+  const { rows: tripRows } = await query(
+    `SELECT
+       COUNT(*) FILTER (WHERE status = 'Dispatched')::INT AS active_trips,
+       COUNT(*) FILTER (WHERE status = 'Draft')::INT AS pending_trips
+     FROM trips`
+  );
+
+  const { rows: driverRows } = await query(
+    `SELECT
+       COUNT(*) FILTER (WHERE status IN ('Available', 'On Trip'))::INT AS drivers_on_duty
+     FROM drivers`
+  );
+
+  let utilizationPercent = 0;
+
+  try {
+    const current = await getFleetUtilizationCurrent();
+    utilizationPercent = current.utilizationPercentOnTrip ?? 0;
+  } catch {
+    const v = vehicleRows[0] || {};
+    utilizationPercent =
+      v.total_fleet > 0
+        ? Number(((v.active_vehicles / v.total_fleet) * 100).toFixed(1))
+        : 0;
+  }
+
+  const v = vehicleRows[0] || {};
+  const t = tripRows[0] || {};
+  const d = driverRows[0] || {};
+
+  return {
+    activeVehicles: Number(v.active_vehicles || 0),
+    availableVehicles: Number(v.available_vehicles || 0),
+    vehiclesInMaintenance: Number(v.vehicles_in_maintenance || 0),
+    activeTrips: Number(t.active_trips || 0),
+    pendingTrips: Number(t.pending_trips || 0),
+    driversOnDuty: Number(d.drivers_on_duty || 0),
+    totalFleet: Number(v.total_fleet || 0),
+    utilizationPercent,
+  };
+}
+
+function mapFuelEfficiencyRow(row) {
+  const totalDistanceKm = Number(row.total_distance_km || 0);
+  const totalLiters = Number(row.total_liters || 0);
+
+  return {
+    vehicleId: row.vehicle_id,
+    registrationNumber: row.registration_number,
+    nameModel: row.name_model,
+    totalDistanceKm,
+    totalLiters,
+    kmPerLiter: totalLiters > 0 ? Number((totalDistanceKm / totalLiters).toFixed(2)) : null,
+    fuelCost: Number(row.fuel_cost || 0),
+  };
+}
+
+async function getFuelEfficiency({ from, to } = {}) {
+  const startDate = parseDateParam(from, 'from');
+  const endDate = parseDateParam(to, 'to');
+
+  const { rows } = await query(
+    `WITH trip_distance AS (
+       SELECT
+         t.vehicle_id,
+         SUM(COALESCE(t.actual_distance_km, t.planned_distance_km, 0)) AS total_distance_km
+       FROM trips t
+       WHERE t.status = 'Completed'
+         AND t.vehicle_id IS NOT NULL
+         AND ($1::DATE IS NULL OR t.updated_at::DATE >= $1::DATE)
+         AND ($2::DATE IS NULL OR t.updated_at::DATE <= $2::DATE)
+       GROUP BY t.vehicle_id
+     ),
+     fuel_usage AS (
+       SELECT
+         fl.vehicle_id,
+         SUM(fl.liters) AS total_liters,
+         SUM(fl.cost) AS fuel_cost
+       FROM fuel_logs fl
+       WHERE ($1::DATE IS NULL OR fl.logged_at >= $1::DATE)
+         AND ($2::DATE IS NULL OR fl.logged_at <= $2::DATE)
+       GROUP BY fl.vehicle_id
+     )
+     SELECT
+       v.id AS vehicle_id,
+       v.registration_number,
+       v.name_model,
+       COALESCE(td.total_distance_km, 0) AS total_distance_km,
+       COALESCE(fu.total_liters, 0) AS total_liters,
+       COALESCE(fu.fuel_cost, 0) AS fuel_cost
+     FROM vehicles v
+     LEFT JOIN trip_distance td ON td.vehicle_id = v.id
+     LEFT JOIN fuel_usage fu ON fu.vehicle_id = v.id
+     WHERE v.status <> 'Retired'
+       AND (COALESCE(td.total_distance_km, 0) > 0 OR COALESCE(fu.total_liters, 0) > 0)
+     ORDER BY v.registration_number`,
+    [startDate, endDate]
+  );
+
+  const vehicles = rows.map(mapFuelEfficiencyRow);
+  const fleetDistance = vehicles.reduce((sum, v) => sum + v.totalDistanceKm, 0);
+  const fleetLiters = vehicles.reduce((sum, v) => sum + v.totalLiters, 0);
+
+  return {
+    fleet: {
+      totalDistanceKm: Number(fleetDistance.toFixed(2)),
+      totalLiters: Number(fleetLiters.toFixed(2)),
+      kmPerLiter: fleetLiters > 0 ? Number((fleetDistance / fleetLiters).toFixed(2)) : null,
+    },
+    vehicles,
+  };
+}
+
 module.exports = {
   getFleetUtilization,
   getFleetUtilizationCurrent,
   getVehicleRoi,
   getDashboardKpis,
+  getOperationsSummary,
+  getFuelEfficiency,
 };

@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, Route, ShieldCheck, Truck, Wrench } from 'lucide-react';
+import { Activity, Clock3, Package, Route, ShieldCheck, Truck, UserCheck, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../config/roles';
 import ExportCsvButton from '../components/common/ExportCsvButton';
+import SimpleBarChart from '../components/charts/SimpleBarChart';
 import { analyticsApi, tripApi, vehicleApi } from '../services/api';
 import { buildExecutiveReportRows } from '../utils/exportCsv';
+
+const inputClass =
+  'rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100';
 
 const roleHighlights = {
   [ROLES.FLEET_MANAGER]: 'Manage vehicles, drivers, trips, and fleet efficiency.',
@@ -34,11 +38,14 @@ function KpiCard({ label, value, icon: Icon, color, hint }) {
 export default function Dashboard() {
   const { user, hasRole } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [vehicles, setVehicles] = useState([]);
+  const [kpis, setKpis] = useState(null);
   const [trips, setTrips] = useState([]);
-  const [utilizationPercent, setUtilizationPercent] = useState(0);
   const [vehicleRoi, setVehicleRoi] = useState([]);
+  const [filterMeta, setFilterMeta] = useState({ vehicleTypes: [], regions: [] });
   const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [regionFilter, setRegionFilter] = useState('');
 
   const canViewAnalytics = hasRole(ROLES.FLEET_MANAGER, ROLES.FINANCIAL_ANALYST);
 
@@ -46,105 +53,129 @@ export default function Dashboard() {
     setLoading(true);
     setError('');
 
-    try {
-      const [vehiclesRes, tripsRes] = await Promise.all([
-        vehicleApi.list(),
-        tripApi.list(),
-      ]);
+    const summaryParams = {};
+    if (statusFilter) summaryParams.status = statusFilter;
+    if (typeFilter) summaryParams.vehicleType = typeFilter;
+    if (regionFilter) summaryParams.region = regionFilter;
 
-      setVehicles(vehiclesRes.data || []);
-      setTrips(tripsRes.data || []);
+    try {
+      const requests = [
+        analyticsApi.getOperationsSummary(summaryParams),
+        tripApi.list(),
+        vehicleApi.list(),
+      ];
 
       if (canViewAnalytics) {
-        try {
-          const analyticsRes = await analyticsApi.getDashboard();
-          const data = analyticsRes.data;
+        requests.push(analyticsApi.getDashboard());
+      }
 
-          setUtilizationPercent(data.fleetUtilization?.utilizationPercent ?? 0);
-          setVehicleRoi(data.vehicleRoi || []);
-        } catch {
-          // Fall back to computed utilization below
-        }
+      const [summaryRes, tripsRes, vehiclesRes, analyticsRes] = await Promise.all(requests);
+
+      setKpis(summaryRes.data);
+      setTrips(tripsRes.data || []);
+
+      const vehicles = vehiclesRes.data || [];
+      setFilterMeta({
+        vehicleTypes: [...new Set(vehicles.map((v) => v.vehicleType).filter(Boolean))],
+        regions: [...new Set(vehicles.map((v) => v.region).filter(Boolean))],
+      });
+
+      if (analyticsRes?.data) {
+        setVehicleRoi(analyticsRes.data.vehicleRoi || []);
       }
     } catch (err) {
       setError(err.message || 'Failed to load dashboard data.');
     } finally {
       setLoading(false);
     }
-  }, [canViewAnalytics]);
+  }, [canViewAnalytics, statusFilter, typeFilter, regionFilter]);
 
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
 
-  const kpis = useMemo(() => {
-    const operational = vehicles.filter((v) => v.status !== 'Retired');
-    const activeVehicles = operational.filter((v) => v.status === 'On Trip').length;
-    const vehiclesInMaintenance = operational.filter((v) => v.status === 'In Shop').length;
-    const availableVehicles = operational.filter((v) => v.status === 'Available').length;
-    const activeTrips = trips.filter((t) => t.status === 'Dispatched').length;
-
-    const computedUtilization =
-      operational.length > 0
-        ? Number(((activeVehicles / operational.length) * 100).toFixed(1))
-        : 0;
-
-    return {
-      activeVehicles,
-      vehiclesInMaintenance,
-      activeTrips,
-      availableVehicles,
-      totalFleet: operational.length,
-      utilizationPercent:
-        utilizationPercent > 0 ? utilizationPercent : computedUtilization,
-    };
-  }, [vehicles, trips, utilizationPercent]);
+  const safeKpis = kpis || {
+    activeVehicles: 0,
+    availableVehicles: 0,
+    vehiclesInMaintenance: 0,
+    activeTrips: 0,
+    pendingTrips: 0,
+    driversOnDuty: 0,
+    utilizationPercent: 0,
+  };
 
   const exportRows = useMemo(
     () =>
       buildExecutiveReportRows({
-        kpis,
+        kpis: safeKpis,
         vehicleRoi,
         trips: trips.filter((t) => t.status === 'Dispatched' || t.status === 'Draft').slice(0, 50),
       }),
-    [kpis, vehicleRoi, trips]
+    [safeKpis, vehicleRoi, trips]
+  );
+
+  const fleetStatusChart = useMemo(
+    () => [
+      { label: 'Available', value: safeKpis.availableVehicles },
+      { label: 'On Trip', value: safeKpis.activeVehicles },
+      { label: 'In Shop', value: safeKpis.vehiclesInMaintenance },
+    ],
+    [safeKpis]
   );
 
   const kpiCards = [
     {
       label: 'Active Vehicles',
-      value: loading ? '…' : kpis.activeVehicles,
+      value: loading ? '…' : safeKpis.activeVehicles,
       icon: Truck,
       color: 'bg-blue-500',
       hint: 'Currently on trip',
     },
     {
+      label: 'Available Vehicles',
+      value: loading ? '…' : safeKpis.availableVehicles,
+      icon: Package,
+      color: 'bg-emerald-500',
+      hint: 'Ready for dispatch',
+    },
+    {
       label: 'Vehicles in Maintenance',
-      value: loading ? '…' : kpis.vehiclesInMaintenance,
+      value: loading ? '…' : safeKpis.vehiclesInMaintenance,
       icon: Wrench,
       color: 'bg-amber-500',
       hint: 'In shop',
     },
     {
       label: 'Active Trips',
-      value: loading ? '…' : kpis.activeTrips,
+      value: loading ? '…' : safeKpis.activeTrips,
       icon: Route,
       color: 'bg-violet-500',
       hint: 'Dispatched',
     },
     {
+      label: 'Pending Trips',
+      value: loading ? '…' : safeKpis.pendingTrips,
+      icon: Clock3,
+      color: 'bg-slate-500',
+      hint: 'Draft status',
+    },
+    {
+      label: 'Drivers On Duty',
+      value: loading ? '…' : safeKpis.driversOnDuty,
+      icon: UserCheck,
+      color: 'bg-teal-500',
+      hint: 'Available or On Trip',
+    },
+    {
       label: 'Utilization %',
-      value: loading ? '…' : `${kpis.utilizationPercent}%`,
+      value: loading ? '…' : `${safeKpis.utilizationPercent}%`,
       icon: Activity,
       color: 'bg-rose-500',
-      hint: canViewAnalytics ? 'Analytics (30d window)' : 'On-trip / fleet ratio',
+      hint: 'Fleet utilization',
     },
   ];
 
-  const recentTrips = useMemo(
-    () => trips.slice(0, 5),
-    [trips]
-  );
+  const recentTrips = useMemo(() => trips.slice(0, 5), [trips]);
 
   return (
     <div className="space-y-6">
@@ -179,10 +210,74 @@ export default function Dashboard() {
         </div>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">Status</span>
+            <select
+              className={inputClass}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All statuses</option>
+              <option value="Available">Available</option>
+              <option value="On Trip">On Trip</option>
+              <option value="In Shop">In Shop</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">Vehicle Type</span>
+            <select
+              className={inputClass}
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="">All types</option>
+              {filterMeta.vehicleTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">Region</span>
+            <select
+              className={inputClass}
+              value={regionFilter}
+              onChange={(e) => setRegionFilter(e.target.value)}
+            >
+              <option value="">All regions</option>
+              {filterMeta.regions.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {kpiCards.map((card) => (
           <KpiCard key={card.label} {...card} />
         ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <SimpleBarChart
+          title="Fleet Status Distribution"
+          data={fleetStatusChart}
+          barClass="bg-brand-500"
+        />
+        <SimpleBarChart
+          title="Trip Pipeline"
+          data={[
+            { label: 'Pending (Draft)', value: safeKpis.pendingTrips },
+            { label: 'Active (Dispatched)', value: safeKpis.activeTrips },
+          ]}
+          barClass="bg-violet-500"
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -229,6 +324,14 @@ export default function Dashboard() {
                 className="rounded-xl border border-slate-200 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-brand-200 hover:bg-brand-50"
               >
                 View Reports
+              </Link>
+            )}
+            {hasRole(ROLES.FLEET_MANAGER) && (
+              <Link
+                to="/maintenance"
+                className="rounded-xl border border-slate-200 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-brand-200 hover:bg-brand-50"
+              >
+                Log Maintenance
               </Link>
             )}
             {hasRole(ROLES.FLEET_MANAGER, ROLES.FINANCIAL_ANALYST, ROLES.DRIVER) && (

@@ -151,6 +151,16 @@ export const analyticsApi = {
     return data;
   },
 
+  getOperationsSummary: async (params = {}) => {
+    const { data } = await apiClient.get('/analytics/operations-summary', { params });
+    return data;
+  },
+
+  getFuelEfficiency: async (params = {}) => {
+    const { data } = await apiClient.get('/analytics/fuel-efficiency', { params });
+    return data;
+  },
+
   getFleetUtilization: async (params = {}) => {
     const { data } = await apiClient.get('/analytics/fleet-utilization', { params });
     return data;
@@ -158,6 +168,47 @@ export const analyticsApi = {
 
   getVehicleRoi: async (params = {}) => {
     const { data } = await apiClient.get('/analytics/vehicle-roi', { params });
+    return data;
+  },
+};
+
+export const maintenanceApi = {
+  list: async (params = {}) => {
+    const { data } = await apiClient.get('/maintenance', { params });
+    return data;
+  },
+
+  create: async (payload) => {
+    const { data } = await apiClient.post('/maintenance', payload);
+    return data;
+  },
+
+  close: async (id) => {
+    const { data } = await apiClient.patch(`/maintenance/${id}/close`);
+    return data;
+  },
+};
+
+export const fuelApi = {
+  list: async (params = {}) => {
+    const { data } = await apiClient.get('/fuel-logs', { params });
+    return data;
+  },
+
+  create: async (payload) => {
+    const { data } = await apiClient.post('/fuel-logs', payload);
+    return data;
+  },
+};
+
+export const expenseApi = {
+  list: async (params = {}) => {
+    const { data } = await apiClient.get('/expenses', { params });
+    return data;
+  },
+
+  create: async (payload) => {
+    const { data } = await apiClient.post('/expenses', payload);
     return data;
   },
 };

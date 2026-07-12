@@ -49,7 +49,7 @@ node scripts/run-migrations.js
 ### Test duplicate registration handling
 
 ```sql
-SELECT register_vehicle_safe('Van-05', 'Ford Transit', 'Van', 500, 0, 25000, 'Available', 'North');
+SELECT register_vehicle_safe('Van-05', 'Ford Transit', 'Van', 500, 0, 2075000, 'Available', 'North');
 
 SELECT register_vehicle_safe('van-05', 'Duplicate Attempt', 'Van', 500);
 -- Returns: success=false, conflict=true, code='DUPLICATE_REGISTRATION'
@@ -69,6 +69,17 @@ SELECT register_vehicle_safe('van-05', 'Duplicate Attempt', 'Van', 500);
 **ROI formula:** `(Revenue − (Maintenance + Fuel)) / Acquisition Cost × 100`
 
 See `database/queries/analytics.sql` for copy-paste query examples.
+
+### Migration 004 — USD to INR
+
+Converts legacy USD demo amounts to **Indian Rupees** at **1 USD = ₹83** for:
+`vehicles.acquisition_cost`, `trips.revenue`, `fuel_logs.cost`, `maintenance_logs.cost`, `expenses.amount`.
+
+Skips automatically if acquisition costs already look INR-scale (≥ ₹5,00,000).
+
+```bash
+node scripts/run-migrations.js
+```
 
 Health check: `GET http://localhost:5000/api/health`
 

@@ -27,6 +27,10 @@ const MIGRATIONS = [
     version: '003_analytics_aggregations',
     file: 'migrations/003_analytics_aggregations.sql',
   },
+  {
+    version: '004_usd_to_inr',
+    file: 'migrations/004_usd_to_inr.sql',
+  },
 ];
 
 async function tableExists(tableName) {
@@ -71,6 +75,11 @@ async function main() {
 
       if (process.env.RUN_SEED === 'true' || process.env.NODE_ENV !== 'production') {
         await runSqlFile('seed.sql', 'seed.sql');
+        try {
+          await runSqlFile('seed-demo.sql', 'seed-demo.sql');
+        } catch (demoError) {
+          console.log('[migrate] seed-demo.sql skipped or failed:', demoError.message);
+        }
       } else {
         console.log('[migrate] skipping seed.sql (set RUN_SEED=true for first production deploy)');
       }

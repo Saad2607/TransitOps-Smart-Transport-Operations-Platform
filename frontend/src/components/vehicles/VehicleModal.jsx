@@ -79,15 +79,17 @@ export default function VehicleModal({ open, mode, form, error, saving, onClose,
             />
           </Field>
 
-          <Field label="Acquisition Cost">
+          <Field label="Acquisition Cost (₹)">
             <input
               type="number"
               min="0"
               className={inputClass}
               value={form.acquisitionCost}
               onChange={(e) => onChange('acquisitionCost', e.target.value)}
+              placeholder="2500000"
               required
             />
+            <p className="mt-1 text-xs text-slate-500">Example: ₹25,00,000 for a delivery van</p>
           </Field>
 
           <Field label="Status">
