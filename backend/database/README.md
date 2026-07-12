@@ -73,7 +73,7 @@ Exports:
 | Field | Value |
 |---|---|
 | Email | `admin@transitops.local` |
-| Password | `Admin@123` |
+| Password | `Admin@456` |
 | Role | Fleet Manager |
 
 ## Analytics View
