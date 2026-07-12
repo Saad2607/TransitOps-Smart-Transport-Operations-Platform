@@ -101,4 +101,63 @@ export const driverApi = {
     const { data } = await apiClient.delete(`/drivers/${id}`);
     return data;
   },
+
+  listEligible: async () => {
+    const { data } = await apiClient.get('/drivers/eligible');
+    return data;
+  },
+};
+
+export const tripApi = {
+  list: async (params = {}) => {
+    const { data } = await apiClient.get('/trips', { params });
+    return data;
+  },
+
+  getById: async (id) => {
+    const { data } = await apiClient.get(`/trips/${id}`);
+    return data;
+  },
+
+  create: async (payload) => {
+    const { data } = await apiClient.post('/trips', payload);
+    return data;
+  },
+
+  update: async (id, payload) => {
+    const { data } = await apiClient.put(`/trips/${id}`, payload);
+    return data;
+  },
+
+  dispatch: async (id) => {
+    const { data } = await apiClient.patch(`/trips/${id}/dispatch`);
+    return data;
+  },
+
+  complete: async (id, payload = {}) => {
+    const { data } = await apiClient.patch(`/trips/${id}/complete`, payload);
+    return data;
+  },
+
+  cancel: async (id) => {
+    const { data } = await apiClient.patch(`/trips/${id}/cancel`);
+    return data;
+  },
+};
+
+export const analyticsApi = {
+  getDashboard: async (params = {}) => {
+    const { data } = await apiClient.get('/analytics/dashboard', { params });
+    return data;
+  },
+
+  getFleetUtilization: async (params = {}) => {
+    const { data } = await apiClient.get('/analytics/fleet-utilization', { params });
+    return data;
+  },
+
+  getVehicleRoi: async (params = {}) => {
+    const { data } = await apiClient.get('/analytics/vehicle-roi', { params });
+    return data;
+  },
 };
