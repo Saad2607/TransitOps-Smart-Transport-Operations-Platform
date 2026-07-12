@@ -1,40 +1,45 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
-
-async function request(path, options = {}) {
-  const token = localStorage.getItem('transitops_token');
-
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options.headers,
-  };
-
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Request failed');
-  }
-
-  return data;
-}
+import apiClient from './apiClient';
 
 export const authApi = {
-  login: (credentials) =>
-    request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    }),
+  login: async (credentials) => {
+    const { data } = await apiClient.post('/auth/login', credentials);
+    return data;
+  },
 
-  getMe: () => request('/auth/me'),
+  getMe: async () => {
+    const { data } = await apiClient.get('/auth/me');
+    return data;
+  },
 
-  changePassword: (payload) =>
-    request('/auth/change-password', {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    }),
+  changePassword: async (payload) => {
+    const { data } = await apiClient.patch('/auth/change-password', payload);
+    return data;
+  },
+
+  register: async (payload) => {
+    const { data } = await apiClient.post('/auth/register', payload);
+    return data;
+  },
+};
+
+export const fleetApi = {
+  getVehicles: async () => {
+    const { data } = await apiClient.get('/fleet/vehicles');
+    return data;
+  },
+
+  createTrip: async (payload = {}) => {
+    const { data } = await apiClient.post('/fleet/trips', payload);
+    return data;
+  },
+
+  getCompliance: async () => {
+    const { data } = await apiClient.get('/fleet/drivers/compliance');
+    return data;
+  },
+
+  getOperationalCost: async () => {
+    const { data } = await apiClient.get('/fleet/reports/operational-cost');
+    return data;
+  },
 };
