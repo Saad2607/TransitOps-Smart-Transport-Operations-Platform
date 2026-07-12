@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   BarChart3,
-  Bus,
   Fuel,
   LayoutDashboard,
   LogOut,
@@ -17,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ROLES } from '../../config/roles';
+import BrandLogo from '../common/BrandLogo';
 import Header from './Header';
 
 const ALL_NAV_ROLES = Object.values(ROLES);
@@ -101,15 +101,7 @@ export default function DashboardLayout() {
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600">
-              <Bus className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-wide">TransitOps</p>
-              <p className="text-xs text-slate-400">Fleet Operations</p>
-            </div>
-          </div>
+          <BrandLogo variant="dark" />
           <button
             type="button"
             className="rounded-lg p-1 text-slate-300 lg:hidden"
@@ -166,6 +158,7 @@ export default function DashboardLayout() {
           >
             <Menu className="h-5 w-5" />
           </button>
+          <BrandLogo variant="light" showText={false} />
           <p className="text-sm font-semibold text-slate-800">TransitOps</p>
         </div>
 

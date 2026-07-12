@@ -1,15 +1,18 @@
 import { Bell, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import BrandLogo from '../common/BrandLogo';
 
 export default function Header() {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 px-6 py-4 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
       <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Operations Console</h1>
-          <p className="text-sm text-slate-500">Welcome back, {user?.fullName}</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-lg font-semibold text-slate-900">Operations Console</h1>
+            <p className="text-sm text-slate-500">Welcome back, {user?.fullName}</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
