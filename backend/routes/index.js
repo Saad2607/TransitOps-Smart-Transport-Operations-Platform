@@ -4,12 +4,14 @@ const fleetRoutes = require('./fleet.routes');
 const vehicleRoutes = require('./vehicle.routes');
 const driverRoutes = require('./driver.routes');
 const analyticsRoutes = require('./analytics.routes');
+const tripRoutes = require('./trip.routes');
 
 const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/drivers', driverRoutes);
+router.use('/trips', tripRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/fleet', fleetRoutes);
 

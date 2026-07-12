@@ -1,5 +1,6 @@
 const express = require('express');
 const analyticsService = require('../services/analytics.service');
+const tripController = require('../controllers/trip.controller');
 const { ROLES } = require('../config/roles');
 const { authenticate } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/rbac.middleware');
@@ -12,23 +13,13 @@ router.use(authenticate);
 router.post(
   '/trips',
   authorize(ROLES.DRIVER, ROLES.FLEET_MANAGER),
-  asyncHandler(async (_req, res) => {
-    res.status(201).json({
-      success: true,
-      message: 'Driver/Fleet Manager: create trip',
-    });
-  })
+  asyncHandler(tripController.createTrip)
 );
 
 router.patch(
   '/trips/:id/dispatch',
   authorize(ROLES.DRIVER, ROLES.FLEET_MANAGER),
-  asyncHandler(async (req, res) => {
-    res.json({
-      success: true,
-      message: `Driver/Fleet Manager: dispatch trip ${req.params.id}`,
-    });
-  })
+  asyncHandler(tripController.dispatchTrip)
 );
 
 router.get(
