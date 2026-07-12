@@ -8,28 +8,6 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.get(
-  '/vehicles',
-  authorize(ROLES.FLEET_MANAGER),
-  asyncHandler(async (_req, res) => {
-    res.json({
-      success: true,
-      message: 'Fleet Manager: list all vehicles',
-    });
-  })
-);
-
-router.post(
-  '/vehicles',
-  authorize(ROLES.FLEET_MANAGER),
-  asyncHandler(async (_req, res) => {
-    res.status(201).json({
-      success: true,
-      message: 'Fleet Manager: create vehicle',
-    });
-  })
-);
-
 router.post(
   '/trips',
   authorize(ROLES.DRIVER, ROLES.FLEET_MANAGER),
@@ -69,7 +47,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     res.json({
       success: true,
-      message: `Safety Officer/Fleet Manager: suspend driver ${req.params.id}`,
+      message: `Use PATCH /api/drivers/${req.params.id}/suspend for driver suspension.`,
     });
   })
 );
