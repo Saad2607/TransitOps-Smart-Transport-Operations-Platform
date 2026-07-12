@@ -21,6 +21,33 @@ npm install
 npm run dev
 ```
 
+## Migrations (Role 5: Krish)
+
+Apply after `schema.sql`:
+
+```bash
+psql -U postgres -d transitops -f database/migrations/002_indexes_and_constraints.sql
+```
+
+### Migration 002 highlights
+
+| Feature | Purpose |
+|---------|---------|
+| Composite indexes | Faster filters on `vehicle.status`, `driver.status`, `trip.status` |
+| Partial indexes | Optimized dispatch pool, active trips, license expiry reports |
+| `normalize_registration_number()` | Case/whitespace insensitive registration numbers |
+| `register_vehicle_safe()` | Graceful JSON response on duplicate registration conflicts |
+| `schema_migrations` | Tracks applied migration versions |
+
+### Test duplicate registration handling
+
+```sql
+SELECT register_vehicle_safe('Van-05', 'Ford Transit', 'Van', 500, 0, 25000, 'Available', 'North');
+
+SELECT register_vehicle_safe('van-05', 'Duplicate Attempt', 'Van', 500);
+-- Returns: success=false, conflict=true, code='DUPLICATE_REGISTRATION'
+```
+
 Health check: `GET http://localhost:5000/api/health`
 
 ## Schema Overview
