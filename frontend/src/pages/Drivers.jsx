@@ -11,6 +11,13 @@ import {
   formToDriverPayload,
   filterAndSortDrivers,
 } from '../utils/driverUtils';
+import { describeApiError } from '../utils/apiError';
+
+const DRIVER_ERROR_TITLES = {
+  409: 'Duplicate license number',
+  403: 'License or status check failed',
+  400: 'Invalid driver details',
+};
 
 export default function Drivers() {
   const { hasRole } = useAuth();
@@ -104,7 +111,12 @@ export default function Drivers() {
       closeModal();
       await loadDrivers();
     } catch (err) {
-      setError(err.message || 'Failed to save driver.');
+      setError(
+        describeApiError(err, {
+          titles: DRIVER_ERROR_TITLES,
+          fallbackMessage: 'Failed to save driver.',
+        })
+      );
     } finally {
       setSaving(false);
     }

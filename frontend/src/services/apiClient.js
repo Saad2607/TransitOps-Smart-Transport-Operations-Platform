@@ -41,7 +41,13 @@ apiClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject(new Error(message));
+    // Keep status + details so pages can react to specific API
+    // rejections (409 duplicate, 403 license/suspension) in the UI.
+    const normalizedError = new Error(message);
+    normalizedError.status = status;
+    normalizedError.details = error.response?.data?.details;
+
+    return Promise.reject(normalizedError);
   }
 );
 

@@ -8,26 +8,42 @@
 
 const { Pool } = require('pg');
 
-const poolConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME || 'transitops',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
+function buildPoolConfig() {
+  const connectionString = process.env.DATABASE_URL;
 
-  // Pool sizing (pg maintains up to max idle connections)
-  max: Number(process.env.DB_POOL_MAX) || 20,
-  idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS) || 30_000,
-  connectionTimeoutMillis: Number(process.env.DB_CONN_TIMEOUT_MS) || 5_000,
+  const shared = {
+    max: Number(process.env.DB_POOL_MAX) || 20,
+    idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS) || 30_000,
+    connectionTimeoutMillis: Number(process.env.DB_CONN_TIMEOUT_MS) || 5_000,
+    maxUses: Number(process.env.DB_MAX_USES) || 7_500,
+  };
 
-  // Recycle connections periodically (helps with long-lived cloud DB proxies)
-  maxUses: Number(process.env.DB_MAX_USES) || 7_500,
+  if (connectionString) {
+    return {
+      connectionString,
+      ssl:
+        process.env.DB_SSL === 'true'
+          ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
+          : false,
+      ...shared,
+    };
+  }
 
-  ssl:
-    process.env.DB_SSL === 'true'
-      ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
-      : false,
-};
+  return {
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT) || 5432,
+    database: process.env.DB_NAME || 'transitops',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    ssl:
+      process.env.DB_SSL === 'true'
+        ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
+        : false,
+    ...shared,
+  };
+}
+
+const poolConfig = buildPoolConfig();
 
 const pool = new Pool(poolConfig);
 

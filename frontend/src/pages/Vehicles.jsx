@@ -9,6 +9,12 @@ import {
   formToVehiclePayload,
   filterAndSortVehicles,
 } from '../utils/vehicleUtils';
+import { describeApiError } from '../utils/apiError';
+
+const VEHICLE_ERROR_TITLES = {
+  409: 'Duplicate registration number',
+  400: 'Invalid vehicle details',
+};
 
 export default function Vehicles() {
   const [vehicles, setVehicles] = useState([]);
@@ -97,7 +103,12 @@ export default function Vehicles() {
       closeModal();
       await loadVehicles();
     } catch (err) {
-      setError(err.message || 'Failed to save vehicle.');
+      setError(
+        describeApiError(err, {
+          titles: VEHICLE_ERROR_TITLES,
+          fallbackMessage: 'Failed to save vehicle.',
+        })
+      );
     } finally {
       setSaving(false);
     }

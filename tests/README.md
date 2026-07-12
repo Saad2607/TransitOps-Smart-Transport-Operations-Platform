@@ -1,6 +1,6 @@
-# TransitOps — Phase 1 Integration & QA (Jay)
+# TransitOps — Integration & QA (Jay)
 
-Authentication and RBAC verification for Phase 1.
+Authentication, RBAC, and asset CRUD edge-case verification.
 
 ## What's included
 
@@ -8,7 +8,9 @@ Authentication and RBAC verification for Phase 1.
 |-------|---------|
 | `frontend/src/services/apiClient.js` | Centralized Axios client with JWT interceptors |
 | `frontend/src/services/api.js` | Auth + fleet API wrappers using Axios |
-| `tests/phase1-auth.test.js` | Automated Node.js integration test runner |
+| `frontend/src/utils/apiError.js` | Maps API rejections to titled UI error banners |
+| `tests/phase1-auth.test.js` | Phase 1 — auth & RBAC integration tests |
+| `tests/phase2-assets.test.js` | Phase 2 — vehicle/driver CRUD edge-case tests |
 | `postman/TransitOps-Phase1-Auth.postman_collection.json` | Postman collection with test scripts |
 | `postman/TransitOps-Local.postman_environment.json` | Local environment variables |
 
@@ -19,8 +21,22 @@ Authentication and RBAC verification for Phase 1.
 - Injects `Authorization: Bearer <token>` on every request
 
 **Response interceptor**
-- Normalizes API error messages
+- Normalizes API error messages and preserves `status` + `details` on the error
 - On `401` (except login): clears session and redirects to `/login`
+
+## UI error banners (frontend-backend sync)
+
+The Vehicle and Driver forms display a titled error banner when the API
+rejects a save. The banner title is derived from the HTTP status:
+
+| Status | Vehicle form banner | Driver form banner |
+|--------|---------------------|--------------------|
+| `409` | Duplicate registration number | Duplicate license number |
+| `403` | Action not allowed | License or status check failed |
+| `400` | Invalid vehicle details | Invalid driver details |
+
+The backend's descriptive message (e.g. *"Vehicle registration number
+"VAN-05" is already taken."*) is shown below the title.
 
 ## Run automated tests
 
@@ -33,6 +49,7 @@ npm run dev
 **Terminal 2 — run tests**
 ```cmd
 node tests/phase1-auth.test.js
+node tests/phase2-assets.test.js
 ```
 
 Expected output:
@@ -43,6 +60,28 @@ Expected output:
 ...
 Results: 14 passed, 0 failed, 14 total
 ```
+
+## Phase 2 edge-case matrix (`phase2-assets.test.js`)
+
+| Test | Expected |
+|------|----------|
+| Create vehicle | `201` |
+| Duplicate registration (exact) | `409` + "already taken" |
+| Duplicate registration (case/whitespace variant) | `409` |
+| Vehicle with missing fields | `400` |
+| Update vehicle to a taken registration | `409` |
+| Create vehicle as Driver role | `403` |
+| Create driver with valid license | `201`, `isLicenseExpired=false` |
+| Duplicate driver license number | `409` + "already registered" |
+| Expired license + `Available` status | `403` + "expired" |
+| Expired license + `Off Duty` status | `201`, `isLicenseExpired=true` |
+| Set expired-license driver to `Available` | `403` |
+| Create driver as `Suspended` | `400` |
+| Suspend driver | `200`, status `Suspended` |
+| `/drivers/eligible` excludes suspended/expired | `200`, QA drivers absent |
+
+The suite creates uniquely-named QA records (run-ID suffix) and deletes
+them at the end, so it can be re-run safely.
 
 ## Postman setup
 

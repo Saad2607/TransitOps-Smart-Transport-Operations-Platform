@@ -1,0 +1,10 @@
+node_modules
+.env
+.env.*
+!.env.example
+*.log
+.git
+.gitignore
+docker-compose.yml
+scripts/setup-db.ps1
+npm-debug.log*

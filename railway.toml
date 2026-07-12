@@ -1,0 +1,20 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+startCommand = "node server.js"
+
+# Set in Railway Dashboard → Variables:
+#   DATABASE_URL  (from Railway PostgreSQL plugin)
+#   JWT_SECRET
+#   CLIENT_URL    (Vercel frontend URL, comma-separated if multiple)
+#   DB_SSL=true
+#   NODE_ENV=production
+
+[deploy.preDeploy]
+command = "node scripts/run-migrations.js"

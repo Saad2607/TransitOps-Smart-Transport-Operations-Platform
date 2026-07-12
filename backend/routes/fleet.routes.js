@@ -1,4 +1,5 @@
 const express = require('express');
+const analyticsService = require('../services/analytics.service');
 const { ROLES } = require('../config/roles');
 const { authenticate } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/rbac.middleware');
@@ -55,10 +56,16 @@ router.patch(
 router.get(
   '/reports/operational-cost',
   authorize(ROLES.FINANCIAL_ANALYST, ROLES.FLEET_MANAGER),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const data = await analyticsService.getDashboardKpis({
+      from: req.query.from,
+      to: req.query.to,
+    });
+
     res.json({
       success: true,
-      message: 'Financial Analyst/Fleet Manager: operational cost report',
+      data,
+      message: 'Operational cost, fleet utilization, and vehicle ROI summary.',
     });
   })
 );

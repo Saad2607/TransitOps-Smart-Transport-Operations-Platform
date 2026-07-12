@@ -1,4 +1,5 @@
 import Modal from '../common/Modal';
+import FormErrorBanner from '../common/FormErrorBanner';
 import { VEHICLE_STATUSES } from '../../utils/vehicleUtils';
 
 function Field({ label, children }) {
@@ -104,11 +105,7 @@ export default function VehicleModal({ open, mode, form, error, saving, onClose,
           </Field>
         </div>
 
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        <FormErrorBanner error={error} />
 
         <div className="flex justify-end gap-3 pt-2">
           <button

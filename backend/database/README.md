@@ -27,6 +27,13 @@ Apply after `schema.sql`:
 
 ```bash
 psql -U postgres -d transitops -f database/migrations/002_indexes_and_constraints.sql
+psql -U postgres -d transitops -f database/migrations/003_analytics_aggregations.sql
+```
+
+Or run all pending migrations (cloud-safe):
+
+```bash
+node scripts/run-migrations.js
 ```
 
 ### Migration 002 highlights
@@ -47,6 +54,21 @@ SELECT register_vehicle_safe('Van-05', 'Ford Transit', 'Van', 500, 0, 25000, 'Av
 SELECT register_vehicle_safe('van-05', 'Duplicate Attempt', 'Van', 500);
 -- Returns: success=false, conflict=true, code='DUPLICATE_REGISTRATION'
 ```
+
+### Migration 003 highlights (Role 9: Analytics)
+
+| Feature | Purpose |
+|---------|---------|
+| `trips.revenue` | Explicit revenue on completed trips |
+| `estimate_trip_revenue()` | Fallback revenue from distance + cargo |
+| `get_fleet_utilization(from, to)` | Time-on-trip fleet utilization % |
+| `get_vehicle_roi(from, to)` | Per-vehicle ROI aggregation |
+| `vehicle_roi_summary` | All-time ROI view |
+| `fleet_utilization_current` | Live fleet utilization snapshot |
+
+**ROI formula:** `(Revenue − (Maintenance + Fuel)) / Acquisition Cost × 100`
+
+See `database/queries/analytics.sql` for copy-paste query examples.
 
 Health check: `GET http://localhost:5000/api/health`
 
@@ -100,7 +122,7 @@ Exports:
 | Field | Value |
 |---|---|
 | Email | `admin@transitops.local` |
-| Password | `Admin@456` |
+| Password | `Admin@123` |
 | Role | Fleet Manager |
 
 ## Analytics View
